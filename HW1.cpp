@@ -69,8 +69,15 @@ public:
             for(list<chainNode*>::iterator iter=sameWeight[curWeight].begin()
                 ;iter!=sameWeight[curWeight].end();iter++)
             {
-                if( (*iter)->Index > curBiggestIndex->Index )
+                if( (*iter)->Index > curBiggestIndex->Index
+                   || *iter != curParent->parent)
                     curBiggestIndex=*iter;
+            }
+
+            //swap the biggest Index node with curParent node
+            {
+                chainNode* tempNode;
+
             }
 
             curParent=curParent->parent;
