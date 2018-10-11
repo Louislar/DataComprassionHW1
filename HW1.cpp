@@ -2,20 +2,89 @@
 #include<fstream>
 #include<stdio.h>
 #include<string.h>
+#include<map>
+#include<list>
+#include<algorithm>
+
 using namespace std;
-
-
 
 class chainNode
 {
 public:
     chainNode(){}
+    chainNode(int i, int w, int s, chainNode* p)
+    {
+        Index=i;
+        weight=w;
+        symbol=s;
+        leftChild=0;
+        rightChild=0;
+        parent=p;
+    }
 
     chainNode* leftChild;
     chainNode* rightChild;
+    chainNode* parent;
     int Index;
     int weight;
+    int symbol; //256 means this is not a symbol node
+};              //(this node don't have a symbol)
+
+class tree
+{
+public:
+    tree(){
+        root=new chainNode(511, 0, 256, 0);
+        curNYT=root;
+
+        //sameWeight[0]=list<chainNode*>();
+        sameWeight[0].push_back(root);
+    }
+
+    chainNode* root;
+    chainNode* curNYT;
+    map<int, list<chainNode*> > sameWeight;
+    map<int, chainNode* > appedSymbol;  //not first appearance symbol
+    void AddNYT(int symbol)
+    {
+        // create new NYT
+        curNYT->leftChild=new chainNode(curNYT->Index-2
+                                        , 0, 256, curNYT);
+        curNYT->rightChild=new chainNode(curNYT->Index-1
+                                         , 1, symbol, curNYT);
+        sameWeight[0].push_back(curNYT->leftChild);
+        sameWeight[1].push_back(curNYT->rightChild);
+        curNYT->weight=1;
+        list<chainNode*>::iterator findIter=find(sameWeight[0].begin()
+                                         , sameWeight[0].end(), curNYT);
+        sameWeight[0].erase(findIter);
+
+
+        // adjust parent node weight
+        chainNode* curParent=curNYT->parent;
+        while(curParent!=0)
+        {
+            int curWeight=curParent->weight;
+            chainNode* curBiggestIndex=curParent;
+            for(list<chainNode*>::iterator iter=sameWeight[curWeight].begin()
+                ;iter!=sameWeight[curWeight].end();iter++)
+            {
+                if( (*iter)->Index > curBiggestIndex->Index )
+                    curBiggestIndex=*iter;
+            }
+
+            curParent=curParent->parent;
+        }
+
+
+        curNYT=curNYT->leftChild;
+
+        //add in "not fist appearance symbol "list
+        appedSymbol[symbol]=curNYT;
+
+    }
 };
+
 
 int readRAW()
 {
