@@ -25,7 +25,7 @@ public:
     chainNode* leftChild;
     chainNode* rightChild;
     chainNode* parent;
-    int Index;
+    int Index;  //Node number
     int weight;
     int symbol; //256 means this is not a symbol node
 };              //(this node don't have a symbol)
@@ -45,6 +45,27 @@ public:
     chainNode* curNYT;
     map<int, list<chainNode*> > sameWeight;
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
+
+    int EncodingOneSymbol(int symbol)
+    {
+        map<int, chainNode*>::iterator search01=appedSymbol.find(symbol);
+        if(search01!=appedSymbol.end())
+        {
+            // This symbol has already exist in the tree
+            // use appedSymbol to get the encode, from leaf to root
+
+
+            //then update the tree, this symbol's node's weight will +1
+
+        }
+        else
+        {
+            //This symbol is a NYT
+            AddNYT(symbol);
+
+        }
+    }
+
     void AddNYT(int symbol)
     {
         // create new NYT
@@ -62,7 +83,7 @@ public:
 
         // adjust parent node weight
         chainNode* curParent=curNYT->parent;
-        while(curParent!=0)
+        while(curParent!=root)
         {
             int curWeight=curParent->weight;
             chainNode* curBiggestIndex=curParent;
@@ -70,26 +91,61 @@ public:
                 ;iter!=sameWeight[curWeight].end();iter++)
             {
                 if( (*iter)->Index > curBiggestIndex->Index
-                   || *iter != curParent->parent)
+                   && *iter != curParent->parent)
                     curBiggestIndex=*iter;
             }
 
             //swap the biggest Index node with curParent node
+            //how to know he is his parent's left child or right child ?
+            //A: just compare to its parents left/right child pointer
             {
-                chainNode* tempNode;
-
+                if(curParent->parent->leftChild == curParent)   //is left child
+                {
+                    if(curBiggestIndex->parent->leftChild==curBiggestIndex)
+                    {
+                        curParent->parent->leftChild=curBiggestIndex;
+                        curBiggestIndex->parent->leftChild=curParent;
+                    }
+                    else if(curBiggestIndex->parent->rightChild==curBiggestIndex)
+                    {
+                        curParent->parent->leftChild=curBiggestIndex;
+                        curBiggestIndex->parent->rightChild=curParent;
+                    }
+                }
+                else if(curParent->parent->rightChild == curParent)
+                {
+                    if(curBiggestIndex->parent->leftChild==curBiggestIndex)
+                    {
+                        curParent->parent->rightChild=curBiggestIndex;
+                        curBiggestIndex->parent->leftChild=curParent;
+                    }
+                    else if(curBiggestIndex->parent->rightChild==curBiggestIndex)
+                    {
+                        curParent->parent->rightChild=curBiggestIndex;
+                        curBiggestIndex->parent->rightChild=curParent;
+                    }
+                }
             }
 
+            // current parent's weight +1
+            list<chainNode*>::iterator findIter=find(sameWeight[curParent->weight].begin()
+                                         , sameWeight[curParent->weight].end(), curParent);
+            sameWeight[curParent->weight].erase(findIter);
+            curParent->weight=curParent->weight+1;
+            sameWeight[curParent->weight].push_back(curParent);
+            //parent's parent
             curParent=curParent->parent;
         }
 
-
+        //change curNYT to the right one
         curNYT=curNYT->leftChild;
 
         //add in "not fist appearance symbol "list
         appedSymbol[symbol]=curNYT;
 
-    }
+    }// AddNYT() end
+
+
 };
 
 
