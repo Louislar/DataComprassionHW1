@@ -1,3 +1,8 @@
+/********************
+Arthur: Chung Han Liang
+Student ID: 104409017
+********************/
+
 #include<iostream>
 #include<fstream>
 #include<stdio.h>
@@ -43,27 +48,119 @@ public:
 
     chainNode* root;
     chainNode* curNYT;
-    map<int, list<chainNode*> > sameWeight;
+    map<int, list<chainNode*> > sameWeight; //same weight block
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
 
     int EncodingOneSymbol(int symbol)
     {
+        int encode[255];
+        int encodeLength=0;
+        // initial to 2, separate used and unused array space
+        for(int i=0;i<255;i++){encode[i]=2;}
+
         map<int, chainNode*>::iterator search01=appedSymbol.find(symbol);
         if(search01!=appedSymbol.end())
         {
             // This symbol has already exist in the tree
             // use appedSymbol to get the encode, from leaf to root
+            chainNode* tempNode=appedSymbol[symbol];
+            while(tempNode!=root)   //left 0, right 1
+            {
+                if(tempNode->parent->leftChild==tempNode)
+                {
+                    encode[encodeLength]=0;
+                    encodeLength++;
+                }
+                else if(tempNode->parent->leftChild==tempNode)
+                {
+                    encode[encodeLength]=1;
+                    encodeLength++;
+                }
 
+                tempNode=tempNode->parent;
+            }
 
             //then update the tree, this symbol's node's weight will +1
-
+            AddNotNYT(symbol);
         }
         else
         {
+            /**************start from here****************/
+            //Get the NYTcode + index in the appedSymbol
+            chainNode* tempNode=curNYT;
+
+
             //This symbol is a NYT
             AddNYT(symbol);
-
         }
+    }
+
+    void AddNotNYT(int symbol)
+    {
+        chainNode* curSymbolNode=appedSymbol[symbol];
+        curSymbolNode->weight=(curSymbolNode->weight)+1;
+        list<chainNode*>::iterator findIter=find(sameWeight[curSymbolNode->weight].begin()
+                                                 , sameWeight[curSymbolNode->weight].end()
+                                                 , curSymbolNode);
+        sameWeight[curSymbolNode->weight].erase(findIter);
+        sameWeight[(curSymbolNode->weight)+1].push_back(curSymbolNode);
+
+        // Adjust parents weight
+        chainNode* curParent=curSymbolNode->parent;
+        while(curParent!=root)
+        {
+            int curWeight=curParent->weight;
+            chainNode* curBiggestIndex=curParent;
+            for(list<chainNode*>::iterator iter=sameWeight[curWeight].begin()
+                ;iter!=sameWeight[curWeight].end();iter++)
+            {
+                if( (*iter)->Index > curBiggestIndex->Index
+                   && *iter != curParent->parent)
+                    curBiggestIndex=*iter;
+            }
+
+            //swap the biggest Index node with curParent node
+            //how to know he is his parent's left child or right child ?
+            //A: just compare to its parents left/right child pointer
+            {
+                if(curParent->parent->leftChild == curParent)   //is left child
+                {
+                    if(curBiggestIndex->parent->leftChild==curBiggestIndex)
+                    {
+                        curParent->parent->leftChild=curBiggestIndex;
+                        curBiggestIndex->parent->leftChild=curParent;
+                    }
+                    else if(curBiggestIndex->parent->rightChild==curBiggestIndex)
+                    {
+                        curParent->parent->leftChild=curBiggestIndex;
+                        curBiggestIndex->parent->rightChild=curParent;
+                    }
+                }
+                else if(curParent->parent->rightChild == curParent)
+                {
+                    if(curBiggestIndex->parent->leftChild==curBiggestIndex)
+                    {
+                        curParent->parent->rightChild=curBiggestIndex;
+                        curBiggestIndex->parent->leftChild=curParent;
+                    }
+                    else if(curBiggestIndex->parent->rightChild==curBiggestIndex)
+                    {
+                        curParent->parent->rightChild=curBiggestIndex;
+                        curBiggestIndex->parent->rightChild=curParent;
+                    }
+                }
+            }
+
+            // current parent's weight +1
+            list<chainNode*>::iterator findIter=find(sameWeight[curParent->weight].begin()
+                                         , sameWeight[curParent->weight].end(), curParent);
+            sameWeight[curParent->weight].erase(findIter);
+            curParent->weight=curParent->weight+1;
+            sameWeight[curParent->weight].push_back(curParent);
+            //parent's parent
+            curParent=curParent->parent;
+        }
+        //Adjust Parents weight End
     }
 
     void AddNYT(int symbol)
@@ -79,6 +176,7 @@ public:
         list<chainNode*>::iterator findIter=find(sameWeight[0].begin()
                                          , sameWeight[0].end(), curNYT);
         sameWeight[0].erase(findIter);
+        sameWeight[1].push_back(curNYT);
 
 
         // adjust parent node weight
