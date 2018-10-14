@@ -84,13 +84,13 @@ public:
                 {
                     encode[encodeLength]=0;
                     encodeLength++;
-                    encodeStr.push_back('0');
+                    encodeStr.insert(0, "0");
                 }
-                else if(tempNode->parent->leftChild==tempNode)
+                else if(tempNode->parent->rightChild==tempNode)
                 {
                     encode[encodeLength]=1;
                     encodeLength++;
-                    encodeStr.push_back('1');
+                    encodeStr.insert(0, "1");
                 }
 
                 tempNode=tempNode->parent;
@@ -109,19 +109,21 @@ public:
                 {
                     encode[encodeLength]=0;
                     encodeLength++;
-                    encodeStr.push_back('0');
+                    encodeStr.insert(0, "0");
                 }
-                else if(tempNode->parent->leftChild==tempNode)
+                else if(tempNode->parent->rightChild==tempNode)
                 {
                     encode[encodeLength]=1;
                     encodeLength++;
-                    encodeStr.push_back('1');
+                    encodeStr.insert(0, "1");
                 }
 
                 tempNode=tempNode->parent;
             }
+            /*************start here**************/
             encode[encodeLength]=curNYTListIndex;
             encodeLength++;
+
             //This symbol is a NYT
             AddNYT(symbol);
             // adjust the NYT list index
@@ -377,13 +379,13 @@ int readRAW()
 //encoding needs 10s up
 int main01()
 {
-    tree newTree=tree();
-    newTree.readRAW();
+    tree encodeTree=tree();
+    encodeTree.readRAW();
     for(int i=0;i<512;i++)
     {
         for(int j=0;j<512;j++)
         {
-            newTree.EncodingOneSymbol(newTree.img[i][j]);
+            encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
         }
     }
 }
@@ -413,7 +415,8 @@ int main()
     cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
 
     //newTree.AddNotNYT(2);
-    newTree.EncodingOneSymbol(2);
+    string tempOutput=newTree.EncodingOneSymbol(2);
+    cout<<tempOutput<<endl;
     /*cout<<newTree.appedSymbol[2]->Index<<endl;
     cout<<newTree.appedSymbol[2]->weight<<endl;
     cout<<newTree.curNYT->Index<<endl;
@@ -424,7 +427,8 @@ int main()
     cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
 
     //newTree.AddNYT(3);
-    newTree.EncodingOneSymbol(3);
+    string tempOutput02=newTree.EncodingOneSymbol(3);
+    cout<<tempOutput02<<endl;
     cout<<"newTree.root->Index: "<<newTree.root->Index<<endl;
     cout<<"newTree.root->weight: "<<newTree.root->weight<<endl;
     cout<<"newTree.root->rightChild->Index: "<<newTree.root->rightChild->Index<<endl;
