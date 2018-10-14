@@ -1,1 +1,3 @@
 # DataComprassionHW1
+
+用bitset做binary與decimal的轉換會很方便, 最後可能會拿它來做為輸出的工具
