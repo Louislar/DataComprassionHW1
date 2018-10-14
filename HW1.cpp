@@ -10,6 +10,7 @@ Student ID: 104409017
 #include<map>
 #include<list>
 #include<algorithm>
+#include<bitset>
 
 using namespace std;
 
@@ -63,8 +64,9 @@ public:
     int curNYTListIndex;
     int img[512][512];
 
-    int EncodingOneSymbol(int symbol)
+    string EncodingOneSymbol(int symbol)
     {
+        string encodeStr;
         int encode[255];
         int encodeLength=0;
         // initial to 2, separate used and unused array space
@@ -82,11 +84,13 @@ public:
                 {
                     encode[encodeLength]=0;
                     encodeLength++;
+                    encodeStr.push_back('0');
                 }
                 else if(tempNode->parent->leftChild==tempNode)
                 {
                     encode[encodeLength]=1;
                     encodeLength++;
+                    encodeStr.push_back('1');
                 }
 
                 tempNode=tempNode->parent;
@@ -105,11 +109,13 @@ public:
                 {
                     encode[encodeLength]=0;
                     encodeLength++;
+                    encodeStr.push_back('0');
                 }
                 else if(tempNode->parent->leftChild==tempNode)
                 {
                     encode[encodeLength]=1;
                     encodeLength++;
+                    encodeStr.push_back('1');
                 }
 
                 tempNode=tempNode->parent;
@@ -121,7 +127,8 @@ public:
             // adjust the NYT list index
             curNYTListIndex++;
         }
-    }
+        return encodeStr;
+    }// encodeOneSymbol() end
 
     void AddNotNYT(int symbol)
     {
@@ -367,6 +374,19 @@ int readRAW()
     cout<<512*512<<" "<<sum;*/
 }
 
+//encoding needs 10s up
+int main01()
+{
+    tree newTree=tree();
+    newTree.readRAW();
+    for(int i=0;i<512;i++)
+    {
+        for(int j=0;j<512;j++)
+        {
+            newTree.EncodingOneSymbol(newTree.img[i][j]);
+        }
+    }
+}
 
 int main()
 {
