@@ -25,11 +25,13 @@ public:
         leftChild=0;
         rightChild=0;
         parent=p;
+        NYTListIndex=256;
     }
 
     chainNode* leftChild;
     chainNode* rightChild;
     chainNode* parent;
+    int NYTListIndex;   //256 means this node is not in NYT list
     int Index;  //Node number
     int weight;
     int symbol; //256 means this is not a symbol node
@@ -44,12 +46,22 @@ public:
 
         //sameWeight[0]=list<chainNode*>();
         sameWeight[0].push_back(root);
+
+        // initial NYT List index
+        curNYTListIndex=0;
+
+        // initial image
+        for(int i=0;i<512;i++)
+            for(int j=0;j<512;j++)
+                img[i][j]=0;
     }
 
     chainNode* root;
     chainNode* curNYT;
     map<int, list<chainNode*> > sameWeight; //same weight block
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
+    int curNYTListIndex;
+    int img[512][512];
 
     int EncodingOneSymbol(int symbol)
     {
@@ -85,13 +97,29 @@ public:
         }
         else
         {
-            /**************start from here****************/
             //Get the NYTcode + index in the appedSymbol
             chainNode* tempNode=curNYT;
+            while(tempNode!=root)   //left 0, right 1
+            {
+                if(tempNode->parent->leftChild==tempNode)
+                {
+                    encode[encodeLength]=0;
+                    encodeLength++;
+                }
+                else if(tempNode->parent->leftChild==tempNode)
+                {
+                    encode[encodeLength]=1;
+                    encodeLength++;
+                }
 
-
+                tempNode=tempNode->parent;
+            }
+            encode[encodeLength]=curNYTListIndex;
+            encodeLength++;
             //This symbol is a NYT
             AddNYT(symbol);
+            // adjust the NYT list index
+            curNYTListIndex++;
         }
     }
 
@@ -166,9 +194,9 @@ public:
     void AddNYT(int symbol)
     {
         // create new NYT
-        curNYT->leftChild=new chainNode(curNYT->Index-2
+        curNYT->leftChild=new chainNode((curNYT->Index)-2
                                         , 0, 256, curNYT);
-        curNYT->rightChild=new chainNode(curNYT->Index-1
+        curNYT->rightChild=new chainNode((curNYT->Index)-1
                                          , 1, symbol, curNYT);
         sameWeight[0].push_back(curNYT->leftChild);
         sameWeight[1].push_back(curNYT->rightChild);
@@ -178,10 +206,13 @@ public:
         sameWeight[0].erase(findIter);
         sameWeight[1].push_back(curNYT);
 
+        // Add new symbol to NYT list and give it an index
+        appedSymbol[curNYT->rightChild->symbol]=curNYT->rightChild;
+        curNYT->rightChild->NYTListIndex=curNYTListIndex;
 
         // adjust parent node weight
         chainNode* curParent=curNYT->parent;
-        while(curParent!=root)
+        while(curParent!=root&&curParent!=0)
         {
             int curWeight=curParent->weight;
             chainNode* curBiggestIndex=curParent;
@@ -192,6 +223,7 @@ public:
                    && *iter != curParent->parent)
                     curBiggestIndex=*iter;
             }
+
 
             //swap the biggest Index node with curParent node
             //how to know he is his parent's left child or right child ?
@@ -223,6 +255,11 @@ public:
                         curBiggestIndex->parent->rightChild=curParent;
                     }
                 }
+                //swap the index
+                int tempIndex=curParent->Index;
+                curParent->Index=curBiggestIndex->Index;
+                curParent->Index=curBiggestIndex->Index=tempIndex;
+
             }
 
             // current parent's weight +1
@@ -234,18 +271,31 @@ public:
             //parent's parent
             curParent=curParent->parent;
         }
+        if(curNYT!=root)
+            (root->weight)++;
 
         //change curNYT to the right one
         curNYT=curNYT->leftChild;
 
-        //add in "not fist appearance symbol "list
-        appedSymbol[symbol]=curNYT;
-
     }// AddNYT() end
 
+    int readRAW()
+    {
+        ifstream ifs("Lena.raw", ios::binary);
+        unsigned char value;
+        char buf[sizeof(unsigned char)];    //unsigned char is 1 byte
 
+        for(int i=0;i<512;i++){
+        for(int j=0;j<512;j++){
+        ifs.read(buf, sizeof(buf));
+        memcpy (&value, buf, sizeof(value));
+        //cout<<(int)value<<" ";
+        //change char to int
+        img[i][j]=(int)value;
+        }
+        }
+    }
 };
-
 
 int readRAW()
 {
@@ -286,6 +336,21 @@ int readRAW()
 
 int main()
 {
-    readRAW();
+    tree newTree=tree();
+    //readRAW();
+    newTree.readRAW();
+
+    newTree.AddNYT(1);
+
+    cout<<newTree.appedSymbol[1]->Index<<endl;
+    cout<<newTree.curNYT->Index<<endl;
+    cout<<newTree.root->Index<<endl;
+
+    newTree.AddNYT(2);
+    cout<<newTree.appedSymbol[2]->Index<<endl;
+    cout<<newTree.curNYT->Index<<endl;
+    cout<<newTree.root->Index<<endl;
+    cout<<newTree.root->weight<<endl;
+    cout<<newTree.appedSymbol[1]->parent->weight<<endl;
 }
 
