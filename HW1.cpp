@@ -126,15 +126,15 @@ public:
     void AddNotNYT(int symbol)
     {
         chainNode* curSymbolNode=appedSymbol[symbol];
-        curSymbolNode->weight=(curSymbolNode->weight)+1;
-        list<chainNode*>::iterator findIter=find(sameWeight[curSymbolNode->weight].begin()
+        /*list<chainNode*>::iterator findIter=find(sameWeight[curSymbolNode->weight].begin()
                                                  , sameWeight[curSymbolNode->weight].end()
                                                  , curSymbolNode);
         sameWeight[curSymbolNode->weight].erase(findIter);
         sameWeight[(curSymbolNode->weight)+1].push_back(curSymbolNode);
+        curSymbolNode->weight=(curSymbolNode->weight)+1;*/
 
         // Adjust parents weight
-        chainNode* curParent=curSymbolNode->parent;
+        chainNode* curParent=curSymbolNode;
         while(curParent!=root)
         {
             int curWeight=curParent->weight;
@@ -146,6 +146,11 @@ public:
                    && *iter != curParent->parent)
                     curBiggestIndex=*iter;
             }
+
+            /*cout<<"curWeight: "<<curWeight<<endl;
+            cout<<"curBiggestIndex->weight: "<<curBiggestIndex->weight<<endl;
+            cout<<"curBiggestIndex->symbol: "<<curBiggestIndex->symbol<<endl;
+            cout<<"curBiggestIndex->Index: "<<curBiggestIndex->Index<<endl;*/
 
             //swap the biggest Index node with curParent node
             //how to know he is his parent's left child or right child ?
@@ -177,6 +182,17 @@ public:
                         curBiggestIndex->parent->rightChild=curParent;
                     }
                 }
+                //swap the current node's parent pointer
+                {
+                    chainNode* tempNode=curParent->parent;
+                    curParent->parent=curBiggestIndex->parent;
+                    curBiggestIndex->parent=tempNode;
+                }
+
+                //swap the index
+                int tempIndex=curParent->Index;
+                curParent->Index=curBiggestIndex->Index;
+                curBiggestIndex->Index=tempIndex;
             }
 
             // current parent's weight +1
@@ -188,6 +204,12 @@ public:
             //parent's parent
             curParent=curParent->parent;
         }
+        //root weight adjust
+        list<chainNode*>::iterator findIter=find(sameWeight[root->weight].begin()
+                                         , sameWeight[root->weight].end(), root);
+        sameWeight[root->weight].erase(findIter);
+        (root->weight)++;
+        sameWeight[root->weight].push_back(root);
         //Adjust Parents weight End
     }
 
@@ -255,10 +277,16 @@ public:
                         curBiggestIndex->parent->rightChild=curParent;
                     }
                 }
+                //swap the current node's parent pointer
+                {
+                    chainNode* tempNode=curParent->parent;
+                    curParent->parent=curBiggestIndex->parent;
+                    curBiggestIndex->parent=tempNode;
+                }
                 //swap the index
                 int tempIndex=curParent->Index;
                 curParent->Index=curBiggestIndex->Index;
-                curParent->Index=curBiggestIndex->Index=tempIndex;
+                curBiggestIndex->Index=tempIndex;
 
             }
 
@@ -272,7 +300,13 @@ public:
             curParent=curParent->parent;
         }
         if(curNYT!=root)
+        {
+            list<chainNode*>::iterator findIter=find(sameWeight[root->weight].begin()
+                                         , sameWeight[root->weight].end(), root);
+            sameWeight[root->weight].erase(findIter);
             (root->weight)++;
+            sameWeight[root->weight].push_back(root);
+        }
 
         //change curNYT to the right one
         curNYT=curNYT->leftChild;
@@ -340,17 +374,50 @@ int main()
     //readRAW();
     newTree.readRAW();
 
-    newTree.AddNYT(1);
 
-    cout<<newTree.appedSymbol[1]->Index<<endl;
+    //newTree.AddNYT(1);
+    newTree.EncodingOneSymbol(1);
+    /*cout<<newTree.appedSymbol[1]->Index<<endl;
     cout<<newTree.curNYT->Index<<endl;
-    cout<<newTree.root->Index<<endl;
+    cout<<newTree.root->Index<<endl;*/
 
-    newTree.AddNYT(2);
-    cout<<newTree.appedSymbol[2]->Index<<endl;
+    //newTree.AddNYT(2);
+    newTree.EncodingOneSymbol(2);
+    /*cout<<newTree.appedSymbol[2]->Index<<endl;
+    cout<<newTree.appedSymbol[2]->weight<<endl;
     cout<<newTree.curNYT->Index<<endl;
+    cout<<newTree.curNYT->weight<<endl;
     cout<<newTree.root->Index<<endl;
     cout<<newTree.root->weight<<endl;
-    cout<<newTree.appedSymbol[1]->parent->weight<<endl;
+    cout<<newTree.appedSymbol[2]->parent->Index<<endl;
+    cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
+
+    //newTree.AddNotNYT(2);
+    newTree.EncodingOneSymbol(2);
+    /*cout<<newTree.appedSymbol[2]->Index<<endl;
+    cout<<newTree.appedSymbol[2]->weight<<endl;
+    cout<<newTree.curNYT->Index<<endl;
+    cout<<newTree.curNYT->weight<<endl;
+    cout<<newTree.root->Index<<endl;
+    cout<<newTree.root->weight<<endl;
+    cout<<newTree.appedSymbol[2]->parent->Index<<endl;
+    cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
+
+    //newTree.AddNYT(3);
+    newTree.EncodingOneSymbol(3);
+    cout<<"newTree.root->Index: "<<newTree.root->Index<<endl;
+    cout<<"newTree.root->weight: "<<newTree.root->weight<<endl;
+    cout<<"newTree.root->rightChild->Index: "<<newTree.root->rightChild->Index<<endl;
+    cout<<"newTree.root->rightChild->weight: "<<newTree.root->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->Index: "<<newTree.root->leftChild->Index<<endl;
+    cout<<"newTree.root->leftChild->weight: "<<newTree.root->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->Index<<endl;
+    cout<<"newTree.root->leftChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->Index<<endl;
+    cout<<"newTree.root->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->leftChild->rightChild->Index: "<<newTree.root->leftChild->leftChild->rightChild->Index<<endl;
+    cout<<"newTree.root->leftChild->leftChild->rightChild->weight: "<<newTree.root->leftChild->leftChild->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->leftChild->Index<<endl;
+    cout<<"newTree.root->leftChild->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->leftChild->weight<<endl;
 }
 
