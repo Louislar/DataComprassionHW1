@@ -7,6 +7,7 @@ Student ID: 104409017
 #include<fstream>
 #include<stdio.h>
 #include<string.h>
+#include<string>
 #include<map>
 #include<list>
 #include<algorithm>
@@ -120,9 +121,15 @@ public:
 
                 tempNode=tempNode->parent;
             }
-            /*************start here**************/
+            /*send fixed length code for NYTlist*/
+            /*the fixed length code will be 8 bits*/
             encode[encodeLength]=curNYTListIndex;
             encodeLength++;
+            bitset<8> tempBitSet(curNYTListIndex);
+            string tempBitSetStr=tempBitSet.to_string();
+            /*tempBitSetStr.insert(0, " ");
+            tempBitSetStr.push_back(' ');*/
+            encodeStr.insert(encodeStr.length(), tempBitSetStr);
 
             //This symbol is a NYT
             AddNYT(symbol);
@@ -338,6 +345,18 @@ public:
         }
         }
     }
+
+    int OutputToResult(string bitString)
+    {
+        ofstream ofs;
+        ofs.open("Result.raw", ofstream::out | ofstream::app);
+
+        bitset<256> abc(bitString);
+        unsigned long longInt=abc.to_ulong();
+        unsigned char uc=longInt;
+        ofs<<uc;
+        ofs.close();
+    }
 };
 
 int readRAW()
@@ -377,20 +396,27 @@ int readRAW()
 }
 
 //encoding needs 10s up
-int main01()
+int main()
 {
+    ofstream ofs;
+    ofs.open("Result.raw", ofstream::out | ofstream::app);
     tree encodeTree=tree();
     encodeTree.readRAW();
     for(int i=0;i<512;i++)
     {
         for(int j=0;j<512;j++)
         {
-            encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            string temp=encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            bitset<256> abc(temp);
+            unsigned long longInt=abc.to_ulong();
+            unsigned char uc=longInt;
+            ofs<<uc;
         }
     }
+    ofs.close();
 }
 
-int main()
+int main01()
 {
     tree newTree=tree();
     //readRAW();
@@ -443,5 +469,18 @@ int main()
     cout<<"newTree.root->leftChild->leftChild->rightChild->weight: "<<newTree.root->leftChild->leftChild->rightChild->weight<<endl;
     cout<<"newTree.root->leftChild->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->leftChild->Index<<endl;
     cout<<"newTree.root->leftChild->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->leftChild->weight<<endl;
+
+
+    //output Test
+    //output success
+    int findInt=tempOutput02.find(" ");
+    tempOutput02.erase(findInt, 1);
+    ofstream ofs;
+    ofs.open("Result.raw", ofstream::out);
+
+    bitset<10> abc(tempOutput02);
+    unsigned long longInt=abc.to_ulong();
+    unsigned char uc=longInt;
+    ofs<<uc;
 }
 
