@@ -15,6 +15,8 @@ Student ID: 104409017
 
 using namespace std;
 
+int NYTcount=0;
+
 class chainNode
 {
 public:
@@ -125,7 +127,7 @@ public:
             /*the fixed length code will be 8 bits*/
             encode[encodeLength]=curNYTListIndex;
             encodeLength++;
-            bitset<8> tempBitSet(curNYTListIndex);
+            bitset<8> tempBitSet(symbol);   //the NYT list index are equivalent to symbol its  self
             string tempBitSetStr=tempBitSet.to_string();
             /*tempBitSetStr.insert(0, " ");
             tempBitSetStr.push_back(' ');*/
@@ -135,6 +137,8 @@ public:
             AddNYT(symbol);
             // adjust the NYT list index
             curNYTListIndex++;
+
+            NYTcount++;
         }
         return encodeStr;
     }// encodeOneSymbol() end
@@ -398,8 +402,13 @@ int readRAW()
 //encoding needs 10s up
 int main()
 {
+    //don't need to output by byte, it don't need to be a image!!
+    //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
+    //cpp can't write single bit to file
+    //, so bits need to be batched until it is a byte, then can output
     ofstream ofs;
     ofs.open("Result.raw", ofstream::out | ofstream::app);
+    int compareToFixedLenCode=0;
     tree encodeTree=tree();
     encodeTree.readRAW();
     for(int i=0;i<512;i++)
@@ -407,6 +416,7 @@ int main()
         for(int j=0;j<512;j++)
         {
             string temp=encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            compareToFixedLenCode+=8-temp.length();
             bitset<256> abc(temp);
             unsigned long longInt=abc.to_ulong();
             unsigned char uc=longInt;
@@ -414,6 +424,8 @@ int main()
         }
     }
     ofs.close();
+    cout<<"compareToFixedLenCode: "<<compareToFixedLenCode;
+    cout<<"NYTcount: "<<NYTcount;
 }
 
 int main01()
