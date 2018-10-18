@@ -12,6 +12,7 @@ Student ID: 104409017
 #include<list>
 #include<algorithm>
 #include<bitset>
+#include<sstream>
 
 using namespace std;
 
@@ -67,13 +68,61 @@ public:
     int curNYTListIndex;
     int img[512][512];
 
-    string EncodingOneSymbol(int symbol)
+    list<unsigned char> Decoder(list<bool> encode)
     {
+        list<bool>::iterator curEncodeBit=encode.begin();
+        chainNode* curPointing=root;
+
+        while(curPointing!=0 && curEncodeBit!=encode.end())
+        {
+            if(curPointing==curNYT) // Its a NYTnode
+            {
+                string fixedLengthCodeStr="";
+                for(int i=0;i<8;i++)  //8 bits fixed length code
+                {
+                    curEncodeBit++;
+                    fixedLengthCodeStr.push_back(*curEncodeBit);
+                }
+                bitset<8> fixedLengthCode(fixedLengthCodeStr);
+                unsigned long tempUlong=fixedLengthCode.to_ulong();
+                unsigned char tempUC=tempUlong;
+                encode.push_back(tempUC);
+                curPointing=root;
+                continue;
+            }
+            //Its a external node == Its a leaf node
+            if(curPointing->leftChild==0
+               && curPointing->rightChild==0)
+            {
+                encode.push_back(curPointing->symbol);
+                curPointing=root;
+                continue;
+            }
+
+            if(*curEncodeBit==1)
+            {
+                curPointing=curPointing->rightChild;
+                curEncodeBit++;
+                continue;
+            }
+            else if(*curEncodeBit==0)
+            {
+                curPointing=curPointing->leftChild;
+                curEncodeBit++;
+                continue;
+            }
+        }
+    }
+
+    //this function should be change to returning boolean array
+    list<bool> EncodingOneSymbol(int symbol)
+    {
+        list<bool> encodeList;
         string encodeStr;
-        int encode[255];
-        int encodeLength=0;
+        //int encode[255];
+        //int encodeLength=0;
         // initial to 2, separate used and unused array space
-        for(int i=0;i<255;i++){encode[i]=2;}
+        //for(int i=0;i<255;i++){encode[i]=2;}
 
         map<int, chainNode*>::iterator search01=appedSymbol.find(symbol);
         if(search01!=appedSymbol.end())
@@ -85,15 +134,17 @@ public:
             {
                 if(tempNode->parent->leftChild==tempNode)
                 {
-                    encode[encodeLength]=0;
-                    encodeLength++;
+                    //encode[encodeLength]=0;
+                    //encodeLength++;
                     encodeStr.insert(0, "0");
+                    encodeList.push_back(0);
                 }
                 else if(tempNode->parent->rightChild==tempNode)
                 {
-                    encode[encodeLength]=1;
-                    encodeLength++;
+                    //encode[encodeLength]=1;
+                    //encodeLength++;
                     encodeStr.insert(0, "1");
+                    encodeList.push_back(1);
                 }
 
                 tempNode=tempNode->parent;
@@ -110,25 +161,34 @@ public:
             {
                 if(tempNode->parent->leftChild==tempNode)
                 {
-                    encode[encodeLength]=0;
-                    encodeLength++;
+                    //encode[encodeLength]=0;
+                    //encodeLength++;
                     encodeStr.insert(0, "0");
+                    encodeList.push_back(0);
                 }
                 else if(tempNode->parent->rightChild==tempNode)
                 {
-                    encode[encodeLength]=1;
-                    encodeLength++;
+                    //encode[encodeLength]=1;
+                    //encodeLength++;
                     encodeStr.insert(0, "1");
+                    encodeList.push_back(1);
                 }
 
                 tempNode=tempNode->parent;
             }
             /*send fixed length code for NYTlist*/
             /*the fixed length code will be 8 bits*/
-            encode[encodeLength]=curNYTListIndex;
-            encodeLength++;
+            //encode[encodeLength]=curNYTListIndex;
+            //encodeLength++;
             bitset<8> tempBitSet(symbol);   //the NYT list index are equivalent to symbol its  self
             string tempBitSetStr=tempBitSet.to_string();
+            for(int i=0;i<tempBitSetStr.length();i++)
+            {
+                if(tempBitSetStr[i]=='1')
+                    encodeList.push_back(1);
+                else if(tempBitSetStr[i]=='0')
+                    encodeList.push_back(0);
+            }
             /*tempBitSetStr.insert(0, " ");
             tempBitSetStr.push_back(' ');*/
             encodeStr.insert(encodeStr.length(), tempBitSetStr);
@@ -137,10 +197,10 @@ public:
             AddNYT(symbol);
             // adjust the NYT list index
             curNYTListIndex++;
-
+            //For testing how many NYT be read
             NYTcount++;
         }
-        return encodeStr;
+        return encodeList;
     }// encodeOneSymbol() end
 
     void AddNotNYT(int symbol)
@@ -409,23 +469,87 @@ int main()
     ofstream ofs;
     ofs.open("Result.raw", ofstream::out | ofstream::app);
     int compareToFixedLenCode=0;
+    int TotalBit=0;
     tree encodeTree=tree();
     encodeTree.readRAW();
+    list<bool> TotalOut;
+    TotalOut.clear();
     for(int i=0;i<512;i++)
     {
         for(int j=0;j<512;j++)
         {
-            string temp=encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
-            compareToFixedLenCode+=8-temp.length();
-            bitset<256> abc(temp);
-            unsigned long longInt=abc.to_ulong();
-            unsigned char uc=longInt;
-            ofs<<uc;
+            //string temp=encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            //compareToFixedLenCode+=8-temp.length();
+            //bitset<256> abc(temp);
+            //unsigned long longInt=abc.to_ulong();
+            //unsigned char uc=longInt;
+            //ofs<<uc;
+
+            list<bool> temp=encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            compareToFixedLenCode+=(temp.size()-8);
+            TotalBit+=8;
+            //TotalOut.merge(temp);
+            for(list<bool>::iterator it=temp.begin()
+                ;it!=temp.end();it++)
+            {
+                TotalOut.push_back(*it);
+            }
         }
     }
+
+    int outputByte=0;
+    //output to Result.raw
+    int count8=0;
+    bool outBoolArray[8]={0};
+    for(list<bool>::iterator it=TotalOut.begin()
+        ;;it++)
+    {
+        if(it==TotalOut.end())
+        {
+            outputByte++;
+            if(count8!=0)           //fill last unfilled bits with 0
+            {
+                for(int i=count8;i<8;i++)
+                {
+                    outBoolArray[i]=0;
+                }
+
+            }
+            unsigned char tempout=0;
+            int tempcount2=128;
+            for(int i=0;i<8;i++)
+            {
+                tempout+= outBoolArray[i]*tempcount2;
+                tempcount2/=2;
+            }
+            ofs<<tempout;
+            break;
+        }
+        outBoolArray[count8]=*it;
+        count8++;
+        if(count8>=8)
+        {
+            outputByte++;
+            //start output
+            unsigned char tempout=0;
+            int tempcount2=128;
+            for(int i=0;i<8;i++)
+            {
+                tempout+= outBoolArray[i]*tempcount2;
+                tempcount2/=2;
+            }
+            ofs<<tempout;
+            count8=0;
+            for(int i=0;i<8;i++) outBoolArray[i]=0;
+        }
+    }
+
     ofs.close();
-    cout<<"compareToFixedLenCode: "<<compareToFixedLenCode;
-    cout<<"NYTcount: "<<NYTcount;
+    cout<<"compareToFixedLenCode: "<<compareToFixedLenCode<<endl;
+    cout<<"NYTcount: "<<NYTcount<<endl;
+    cout<<"outputByte: "<<outputByte<<endl;
+    cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
+    cout<<"TotalBit: "<<TotalBit<<endl;
 }
 
 int main01()
@@ -453,8 +577,8 @@ int main01()
     cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
 
     //newTree.AddNotNYT(2);
-    string tempOutput=newTree.EncodingOneSymbol(2);
-    cout<<tempOutput<<endl;
+    /*string tempOutput=*/newTree.EncodingOneSymbol(2);
+    /*cout<<tempOutput<<endl;*/
     /*cout<<newTree.appedSymbol[2]->Index<<endl;
     cout<<newTree.appedSymbol[2]->weight<<endl;
     cout<<newTree.curNYT->Index<<endl;
@@ -465,8 +589,8 @@ int main01()
     cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
 
     //newTree.AddNYT(3);
-    string tempOutput02=newTree.EncodingOneSymbol(3);
-    cout<<tempOutput02<<endl;
+    /*string tempOutput02=*/newTree.EncodingOneSymbol(3);
+    /*cout<<tempOutput02<<endl;*/
     cout<<"newTree.root->Index: "<<newTree.root->Index<<endl;
     cout<<"newTree.root->weight: "<<newTree.root->weight<<endl;
     cout<<"newTree.root->rightChild->Index: "<<newTree.root->rightChild->Index<<endl;
@@ -485,7 +609,7 @@ int main01()
 
     //output Test
     //output success
-    int findInt=tempOutput02.find(" ");
+    /*int findInt=tempOutput02.find(" ");
     tempOutput02.erase(findInt, 1);
     ofstream ofs;
     ofs.open("Result.raw", ofstream::out);
@@ -493,6 +617,6 @@ int main01()
     bitset<10> abc(tempOutput02);
     unsigned long longInt=abc.to_ulong();
     unsigned char uc=longInt;
-    ofs<<uc;
+    ofs<<uc;*/
 }
 
