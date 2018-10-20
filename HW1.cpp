@@ -83,26 +83,28 @@ public:
                 string fixedLengthCodeStr="";
                 for(int i=0;i<8;i++)  //8 bits fixed length code
                 {
-                    curEncodeBit++;
                     if(*curEncodeBit==1)
                         fixedLengthCodeStr.push_back('1');
                     else if(*curEncodeBit==0)
                         fixedLengthCodeStr.push_back('0');
+                    curEncodeBit++;
                 }
                 bitset<8> fixedLengthCode(fixedLengthCodeStr);
                 unsigned long tempUlong=fixedLengthCode.to_ulong();
                 unsigned char tempUC=tempUlong;
                 ans.push_back(tempUC);
                 allDecodes.push_back(tempUC);
+                EncodingOneSymbol(tempUC);
                 curPointing=root;
                 continue;
             }
             //Its a external node == Its a leaf node
-            if(curPointing->leftChild==0
+            else if(curPointing->leftChild==0
                && curPointing->rightChild==0)
             {
                 ans.push_back(curPointing->symbol);
                 allDecodes.push_back(curPointing->symbol);
+                EncodingOneSymbol(curPointing->symbol);
                 curPointing=root;
                 continue;
             }
@@ -465,6 +467,9 @@ public:
             ofs<<*it;
         }
         ofs.close();
+
+        //test
+        cout<<"allDecodes.size()_bytes: "<<allDecodes.size()<<endl;
     }
 
     int OutputToResult(string bitString)
@@ -521,27 +526,26 @@ int main()
     tree decodeTree=tree();
     decodeTree.readEncode();
     //test readEncode()
-    /*list<bool>::iterator encodeIt=decodeTree.allEncodes.begin();
-    for(int i=0;i<10;i++)
+    list<bool>::iterator encodeIt=decodeTree.allEncodes.begin();
+    for(int i=0;i<20;i++)
     {
         cout<<*encodeIt<<endl;
         encodeIt++;
     }
 
-    bitset<8> tempBitset(string("10100010"));
-    unsigned char tempUC=tempBitset.to_ulong();
+    bitset<8> tempBitset(string("10100010"));//162
     int tempInt=tempBitset.to_ulong();
     cout<<tempInt<<endl;
-    cout<<tempUC<<endl;*/
 
     decodeTree.Decoder(decodeTree.allEncodes);
-    list<unsigned char>::iterator encodeIt=decodeTree.allDecodes.begin();
+    //test decoder
+    /*list<unsigned char>::iterator encodeIt=decodeTree.allDecodes.begin();
     for(int i=0;i<10;i++)
     {
         cout<<(int) (*encodeIt)<<endl;
         encodeIt++;
     }
-    cout<<decodeTree.allDecodes.size()<<endl;
+    cout<<decodeTree.allDecodes.size()<<endl;*/
 
     decodeTree.OutputToAfterDecode();
 }
@@ -637,6 +641,17 @@ int main02()
     cout<<"outputByte: "<<outputByte<<endl;
     cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
     cout<<"TotalBit: "<<TotalBit<<endl; //if use 8bit fixed length to store
+    for(int i=0;i<10;i++)
+    {
+        cout<<encodeTree.img[0][i]<<" ";
+    }
+    cout<<"\n TotalOut: "<<endl;
+    list<bool>::iterator tempIt=TotalOut.begin();
+    for(int i=0;i<10;i++)
+    {
+        cout<<*tempIt<<" ";
+        tempIt++;
+    }
 }
 
 int main01()
