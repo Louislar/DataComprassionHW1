@@ -67,9 +67,12 @@ public:
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
     int curNYTListIndex;
     int img[512][512];
+    list<bool> allEncodes;   //store all encodes from Result.raw
+    list<unsigned char> allDecodes; //store all the pixel out from decoder
 
     list<unsigned char> Decoder(list<bool> encode)
     {
+        list<unsigned char> ans;
         list<bool>::iterator curEncodeBit=encode.begin();
         chainNode* curPointing=root;
 
@@ -81,12 +84,16 @@ public:
                 for(int i=0;i<8;i++)  //8 bits fixed length code
                 {
                     curEncodeBit++;
-                    fixedLengthCodeStr.push_back(*curEncodeBit);
+                    if(*curEncodeBit==1)
+                        fixedLengthCodeStr.push_back('1');
+                    else if(*curEncodeBit==0)
+                        fixedLengthCodeStr.push_back('0');
                 }
                 bitset<8> fixedLengthCode(fixedLengthCodeStr);
                 unsigned long tempUlong=fixedLengthCode.to_ulong();
                 unsigned char tempUC=tempUlong;
-                encode.push_back(tempUC);
+                ans.push_back(tempUC);
+                allDecodes.push_back(tempUC);
                 curPointing=root;
                 continue;
             }
@@ -94,7 +101,8 @@ public:
             if(curPointing->leftChild==0
                && curPointing->rightChild==0)
             {
-                encode.push_back(curPointing->symbol);
+                ans.push_back(curPointing->symbol);
+                allDecodes.push_back(curPointing->symbol);
                 curPointing=root;
                 continue;
             }
@@ -112,6 +120,7 @@ public:
                 continue;
             }
         }
+        return ans;
     }
 
     //this function should be change to returning boolean array
@@ -408,6 +417,54 @@ public:
         img[i][j]=(int)value;
         }
         }
+        ifs.close();
+    }
+
+    list<bool> readEncode()
+    {
+        list<bool> ans; //Will be fed to Decoder()
+        ifstream ifs("Result.raw", ios::binary);
+        unsigned char value;
+        char buf[sizeof(unsigned char)];    //unsigned char is 1 byte
+
+
+        while(1){
+        ifs.read(buf, sizeof(buf));
+        if(!ifs) break;
+        memcpy (&value, buf, sizeof(value));
+        //cout<<(int)value<<" ";
+        //change char to int
+        bitset<8> tempBitset(value);
+        string tempStr=tempBitset.to_string();
+        for(int i=0;i<tempStr.length();i++)
+        {
+            if(tempStr[i]=='1')
+            {
+                ans.push_back(1);
+                allEncodes.push_back(1);
+            }
+            else if(tempStr[i]=='0')
+            {
+                ans.push_back(0);
+                allEncodes.push_back(0);
+            }
+        }
+        }
+        ifs.close();
+        return ans;
+    }
+
+    int OutputToAfterDecode()
+    {
+        ofstream ofs;
+        ofs.open("AfterDecode.raw", ofstream::out | ofstream::app);
+
+        for(list<unsigned char>::iterator it=allDecodes.begin();
+            it!=allDecodes.end();it++)
+        {
+            ofs<<*it;
+        }
+        ofs.close();
     }
 
     int OutputToResult(string bitString)
@@ -459,8 +516,38 @@ int readRAW()
     cout<<512*512<<" "<<sum;*/
 }
 
-//encoding needs 10s up
 int main()
+{
+    tree decodeTree=tree();
+    decodeTree.readEncode();
+    //test readEncode()
+    /*list<bool>::iterator encodeIt=decodeTree.allEncodes.begin();
+    for(int i=0;i<10;i++)
+    {
+        cout<<*encodeIt<<endl;
+        encodeIt++;
+    }
+
+    bitset<8> tempBitset(string("10100010"));
+    unsigned char tempUC=tempBitset.to_ulong();
+    int tempInt=tempBitset.to_ulong();
+    cout<<tempInt<<endl;
+    cout<<tempUC<<endl;*/
+
+    decodeTree.Decoder(decodeTree.allEncodes);
+    list<unsigned char>::iterator encodeIt=decodeTree.allDecodes.begin();
+    for(int i=0;i<10;i++)
+    {
+        cout<<(int) (*encodeIt)<<endl;
+        encodeIt++;
+    }
+    cout<<decodeTree.allDecodes.size()<<endl;
+
+    decodeTree.OutputToAfterDecode();
+}
+
+//encoding needs 10s up
+int main02()
 {
     //don't need to output by byte, it don't need to be a image!!
     //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
@@ -549,7 +636,7 @@ int main()
     cout<<"NYTcount: "<<NYTcount<<endl;
     cout<<"outputByte: "<<outputByte<<endl;
     cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
-    cout<<"TotalBit: "<<TotalBit<<endl;
+    cout<<"TotalBit: "<<TotalBit<<endl; //if use 8bit fixed length to store
 }
 
 int main01()
