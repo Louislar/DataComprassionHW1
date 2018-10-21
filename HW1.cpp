@@ -67,6 +67,7 @@ public:
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
     int curNYTListIndex;
     int img[512][512];
+    list<bool> afterEncode;  // store all bits after encoding the original image
     list<bool> allEncodes;   //store all encodes from Result.raw
     list<unsigned char> allDecodes; //store all the pixel out from decoder
 
@@ -130,10 +131,6 @@ public:
     {
         list<bool> encodeList;
         string encodeStr;
-        //int encode[255];
-        //int encodeLength=0;
-        // initial to 2, separate used and unused array space
-        //for(int i=0;i<255;i++){encode[i]=2;}
 
         map<int, chainNode*>::iterator search01=appedSymbol.find(symbol);
         if(search01!=appedSymbol.end())
@@ -145,21 +142,22 @@ public:
             {
                 if(tempNode->parent->leftChild==tempNode)
                 {
-                    //encode[encodeLength]=0;
-                    //encodeLength++;
                     encodeStr.insert(0, "0");
-                    encodeList.push_back(0);
+                    encodeList.push_front(0);
                 }
                 else if(tempNode->parent->rightChild==tempNode)
                 {
-                    //encode[encodeLength]=1;
-                    //encodeLength++;
                     encodeStr.insert(0, "1");
-                    encodeList.push_back(1);
+                    encodeList.push_front(1);
                 }
 
                 tempNode=tempNode->parent;
             }
+            for(list<bool>::iterator it=encodeList.begin();
+                it!=encodeList.end();it++)
+                {
+                    afterEncode.push_back(*it);
+                }
 
             //then update the tree, this symbol's node's weight will +1
             AddNotNYT(symbol);
@@ -172,34 +170,35 @@ public:
             {
                 if(tempNode->parent->leftChild==tempNode)
                 {
-                    //encode[encodeLength]=0;
-                    //encodeLength++;
                     encodeStr.insert(0, "0");
-                    encodeList.push_back(0);
+                    encodeList.push_front(0);
                 }
                 else if(tempNode->parent->rightChild==tempNode)
                 {
-                    //encode[encodeLength]=1;
-                    //encodeLength++;
                     encodeStr.insert(0, "1");
-                    encodeList.push_back(1);
+                    encodeList.push_front(1);
                 }
 
                 tempNode=tempNode->parent;
             }
             /*send fixed length code for NYTlist*/
             /*the fixed length code will be 8 bits*/
-            //encode[encodeLength]=curNYTListIndex;
-            //encodeLength++;
             bitset<8> tempBitSet(symbol);   //the NYT list index are equivalent to symbol its  self
             string tempBitSetStr=tempBitSet.to_string();
             for(int i=0;i<tempBitSetStr.length();i++)
             {
-                if(tempBitSetStr[i]=='1')
+                if(tempBitSetStr[i]=='1'){
                     encodeList.push_back(1);
-                else if(tempBitSetStr[i]=='0')
+                }
+                else if(tempBitSetStr[i]=='0'){
                     encodeList.push_back(0);
+                }
             }
+            for(list<bool>::iterator it=encodeList.begin();
+                it!=encodeList.end();it++)
+                {
+                    afterEncode.push_back(*it);
+                }
             /*tempBitSetStr.insert(0, " ");
             tempBitSetStr.push_back(' ');*/
             encodeStr.insert(encodeStr.length(), tempBitSetStr);
@@ -208,7 +207,7 @@ public:
             AddNYT(symbol);
             // adjust the NYT list index
             curNYTListIndex++;
-            //For testing how many NYT be read
+            //For testing how many NYT have been read
             NYTcount++;
         }
         return encodeList;
@@ -521,37 +520,79 @@ int readRAW()
     cout<<512*512<<" "<<sum;*/
 }
 
-int main()
+int main03()
 {
     tree decodeTree=tree();
     decodeTree.readEncode();
     //test readEncode()
     list<bool>::iterator encodeIt=decodeTree.allEncodes.begin();
-    for(int i=0;i<20;i++)
+    for(int i=0;i<80;i++)
     {
-        cout<<*encodeIt<<endl;
+        cout<<*encodeIt<<" ";
         encodeIt++;
+        if((i+1)%20==0&&i!=0)
+        cout<<endl;
     }
 
     bitset<8> tempBitset(string("10100010"));//162
     int tempInt=tempBitset.to_ulong();
-    cout<<tempInt<<endl;
+    cout<<"\n"<<tempInt<<endl;
 
     decodeTree.Decoder(decodeTree.allEncodes);
     //test decoder
-    /*list<unsigned char>::iterator encodeIt=decodeTree.allDecodes.begin();
-    for(int i=0;i<10;i++)
+    list<unsigned char>::iterator decodeIt=decodeTree.allDecodes.begin();
+    for(int i=0;i<50;i++)
     {
-        cout<<(int) (*encodeIt)<<endl;
-        encodeIt++;
+        if(i>=40)
+            cout<<(int) (*decodeIt)<<" ";
+        decodeIt++;
     }
-    cout<<decodeTree.allDecodes.size()<<endl;*/
+    cout<<endl;
 
     decodeTree.OutputToAfterDecode();
+    cout<<"decodeTree.root->weight: "<<decodeTree.root->weight<<endl;
+    decodeTree.readRAW();
+    //output original image pixel
+    cout<<"Original pixel: \n";
+    for(int i=0;i<50;i++)
+    {
+        cout<<decodeTree.img[0][i]<<" ";
+        if((i+1)%10==0&&i!=0) cout<<endl;
+    }
+    cout<<endl;
+
+
+    //test for allDecodes
+    {
+    int IndexCount=0;
+    int ImageTemp=0;
+    list<unsigned char>::iterator tempUCListIt=decodeTree.allDecodes.begin();
+    for(int i=0;i<512;i++)
+    {
+        bool flag=false;
+        for(int j=0;j<512;j++)
+        {
+            if(decodeTree.img[i][j]!=*tempUCListIt)
+            {
+                ImageTemp=decodeTree.img[i][j];
+                flag=true;
+                break;
+            }
+            tempUCListIt++;
+            IndexCount++;
+        }
+        if(flag)
+            break;
+    }
+    cout<<"IndexCount: "<<IndexCount<<endl;
+    cout<<"ImageTemp: "<<ImageTemp<<endl;
+    cout<<"*tempUCListIt: "<<(int)*tempUCListIt<<endl;
+    cout<<"NYTcount: "<<NYTcount<<endl;
+    }
 }
 
 //encoding needs 10s up
-int main02()
+int main()
 {
     //don't need to output by byte, it don't need to be a image!!
     //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
@@ -563,7 +604,7 @@ int main02()
     int TotalBit=0;
     tree encodeTree=tree();
     encodeTree.readRAW();
-    list<bool> TotalOut;
+    list<bool> TotalOut;    //all the bits will be output to Result.raw
     TotalOut.clear();
     for(int i=0;i<512;i++)
     {
@@ -641,6 +682,7 @@ int main02()
     cout<<"outputByte: "<<outputByte<<endl;
     cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
     cout<<"TotalBit: "<<TotalBit<<endl; //if use 8bit fixed length to store
+    cout<<"\n OriginalImageBits: "<<endl;
     for(int i=0;i<10;i++)
     {
         cout<<encodeTree.img[0][i]<<" ";
@@ -652,6 +694,25 @@ int main02()
         cout<<*tempIt<<" ";
         tempIt++;
     }
+
+    //decode & output
+    tree* decodeTree=new tree();
+    //decodeTree.readEncode();
+    decodeTree->Decoder(encodeTree.afterEncode);
+    decodeTree->OutputToAfterDecode();
+
+
+}
+
+int decodemain(list<bool> boolList)
+{
+    tree* newTree= new tree();
+    newTree->Decoder(boolList);
+    cout<<"After decode: "<<endl;
+    list<unsigned char>::iterator tempListIt=newTree->allDecodes.begin();
+    for(;tempListIt!=newTree->allDecodes.end();tempListIt++)
+        cout<<(int)*tempListIt<<" ";
+    cout<<endl;
 }
 
 int main01()
@@ -660,53 +721,64 @@ int main01()
     //readRAW();
     newTree.readRAW();
 
+    int arrayTemp[50]={162, 162, 162, 161, 162, 156, 163, 160, 164, 160
+                      ,161, 159, 155, 162, 159, 154, 157, 156, 161, 161
+                      ,153, 156, 154, 157, 154, 157, 155, 152, 156, 154
+                      ,154, 156, 153, 157, 154, 159, 158, 166, 159, 166
+                      ,166, 165, 166, 171, 170, 175, 173, 170, 172, 172};
 
-    //newTree.AddNYT(1);
-    newTree.EncodingOneSymbol(1);
-    /*cout<<newTree.appedSymbol[1]->Index<<endl;
-    cout<<newTree.curNYT->Index<<endl;
-    cout<<newTree.root->Index<<endl;*/
+    //newTree.EncodingOneSymbol(162);
+    for(int i=0;i<50;i++)
+        newTree.EncodingOneSymbol(arrayTemp[i]);
+    int count01=1;
+    for(list<bool>::iterator it=newTree.afterEncode.begin();it!=newTree.afterEncode.end();it++)
+    {
+        cout<<*it<<" ";
+        if(count01==20)
+        {
+            cout<<endl;
+            count01=0;
+        }
+        count01++;
+    }
+    cout<<endl;
+    decodemain(newTree.afterEncode);
 
-    //newTree.AddNYT(2);
-    newTree.EncodingOneSymbol(2);
-    /*cout<<newTree.appedSymbol[2]->Index<<endl;
-    cout<<newTree.appedSymbol[2]->weight<<endl;
-    cout<<newTree.curNYT->Index<<endl;
-    cout<<newTree.curNYT->weight<<endl;
-    cout<<newTree.root->Index<<endl;
-    cout<<newTree.root->weight<<endl;
-    cout<<newTree.appedSymbol[2]->parent->Index<<endl;
-    cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
-
-    //newTree.AddNotNYT(2);
-    /*string tempOutput=*/newTree.EncodingOneSymbol(2);
-    /*cout<<tempOutput<<endl;*/
-    /*cout<<newTree.appedSymbol[2]->Index<<endl;
-    cout<<newTree.appedSymbol[2]->weight<<endl;
-    cout<<newTree.curNYT->Index<<endl;
-    cout<<newTree.curNYT->weight<<endl;
-    cout<<newTree.root->Index<<endl;
-    cout<<newTree.root->weight<<endl;
-    cout<<newTree.appedSymbol[2]->parent->Index<<endl;
-    cout<<newTree.appedSymbol[2]->parent->weight<<endl;*/
-
-    //newTree.AddNYT(3);
-    /*string tempOutput02=*/newTree.EncodingOneSymbol(3);
-    /*cout<<tempOutput02<<endl;*/
+    cout<<"newTree.curNYT->Index: "<<newTree.curNYT->Index<<endl;
+    cout<<"newTree.curNYT->weight: "<<newTree.curNYT->weight<<endl;
     cout<<"newTree.root->Index: "<<newTree.root->Index<<endl;
     cout<<"newTree.root->weight: "<<newTree.root->weight<<endl;
     cout<<"newTree.root->rightChild->Index: "<<newTree.root->rightChild->Index<<endl;
     cout<<"newTree.root->rightChild->weight: "<<newTree.root->rightChild->weight<<endl;
+    cout<<"newTree.root->rightChild->symbol: "<<newTree.root->rightChild->symbol<<endl;
     cout<<"newTree.root->leftChild->Index: "<<newTree.root->leftChild->Index<<endl;
     cout<<"newTree.root->leftChild->weight: "<<newTree.root->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->symbol: "<<newTree.root->leftChild->symbol<<endl;
     cout<<"newTree.root->leftChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->Index<<endl;
     cout<<"newTree.root->leftChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->symbol<<endl;
     cout<<"newTree.root->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->Index<<endl;
     cout<<"newTree.root->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->weight<<endl;
-    cout<<"newTree.root->leftChild->leftChild->rightChild->Index: "<<newTree.root->leftChild->leftChild->rightChild->Index<<endl;
-    cout<<"newTree.root->leftChild->leftChild->rightChild->weight: "<<newTree.root->leftChild->leftChild->rightChild->weight<<endl;
-    cout<<"newTree.root->leftChild->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->leftChild->Index<<endl;
-    cout<<"newTree.root->leftChild->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->leftChild->symbol: "<<newTree.root->leftChild->leftChild->symbol<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->rightChild->Index: "<<newTree.root->leftChild->leftChild->rightChild->Index<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->rightChild->weight: "<<newTree.root->leftChild->leftChild->rightChild->weight<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->rightChild->symbol: "<<newTree.root->leftChild->leftChild->rightChild->symbol<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->leftChild->Index<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->leftChild->weight<<endl;
+    //cout<<"newTree.root->leftChild->leftChild->leftChild->symbol: "<<newTree.root->leftChild->leftChild->leftChild->symbol<<endl;
+    cout<<"newTree.root->leftChild->rightChild->leftChild->Index: "<<newTree.root->leftChild->rightChild->leftChild->Index<<endl;
+    cout<<"newTree.root->leftChild->rightChild->leftChild->weight: "<<newTree.root->leftChild->rightChild->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->leftChild->symbol: "<<newTree.root->leftChild->rightChild->leftChild->symbol<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->Index<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->symbol<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->Index<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->symbol<<endl;\
+    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->Index<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->weight<<endl;
+    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->symbol<<endl;
+
 
 
     //output Test
