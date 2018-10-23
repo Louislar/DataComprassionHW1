@@ -18,6 +18,17 @@ using namespace std;
 
 int NYTcount=0;
 
+class DPCMarray
+{
+public:
+    DPCMarray(){
+        for(int i=0;i<512;i++)
+            for(int j=0;j<512;j++)
+                DPCMimg[i][j]=0;
+    }
+    int DPCMimg[512][512];
+};
+
 class chainNode
 {
 public:
@@ -56,9 +67,15 @@ public:
         curNYTListIndex=0;
 
         // initial image
-        for(int i=0;i<512;i++)
+        for(int i=0;i<512;i++){
             for(int j=0;j<512;j++)
+            {
                 img[i][j]=0;
+            }
+        }
+
+        //initial DPCM
+        DPCM=new DPCMarray();
     }
 
     chainNode* root;
@@ -67,6 +84,7 @@ public:
     map<int, chainNode* > appedSymbol;  //not first appearance symbol
     int curNYTListIndex;
     int img[512][512];
+    DPCMarray* DPCM;
     list<bool> afterEncode;  // store all bits after encoding the original image
     list<bool> allEncodes;   //store all encodes from Result.raw
     list<unsigned char> allDecodes; //store all the pixel out from decoder
@@ -494,6 +512,25 @@ public:
         ofs<<uc;
         ofs.close();
     }
+
+    int createDPCM()
+    {
+        //first row is top minus down
+        for(int i=0;i<511;i++)
+        {
+            DPCM->DPCMimg[i][0]=img[i][0]-img[i+1][0];
+        }
+        DPCM->DPCMimg[512][0]=img[512][0];
+
+        //except first row, right row minus left row
+        for(int i=0;i<512;i++)
+        {
+            for(int j=1;j<512;j++)
+            {
+                DPCM->DPCMimg[i][j]=img[i][j]-img[i][j-1];
+            }
+        }
+    }
 };
 
 int readRAW()
@@ -723,7 +760,7 @@ int main()
     decodeTree->OutputToAfterDecode();
 
     //compare totalout and allencodes
-    int compareIndex=0;
+    /*int compareIndex=0;
     for(list<bool>::iterator it01=TotalOut.begin()
         , it02=decodeTree->allEncodes.begin();it01!=TotalOut.end()
         ;it01++, it02++)
@@ -732,7 +769,67 @@ int main()
             break;
         compareIndex++;
     }
-    cout<<"compareIndex: "<<compareIndex<<endl;
+    cout<<"compareIndex: "<<compareIndex<<endl;*/
+
+    //start doing DPCM stuff...
+    tree* DPCMTree=new tree();
+    encodeTree.createDPCM();
+    for(int i=0;i<512;i++)
+        for(int j=0;j<512;j++)
+            DPCMTree->img[i][j]=encodeTree.DPCM->DPCMimg[i][j];
+    for(int i=0;i<512;i++)
+        for(int j=0;j<512;j++)
+            DPCMTree->EncodingOneSymbol(DPCMTree->img[i][j]);
+    ofstream ofs2("ResultDPCM.raw", ios::binary);
+    for(list<bool>::iterator it=DPCMTree->afterEncode.begin()
+        ;;it++)
+    {
+        if(it==DPCMTree->afterEncode.end())
+        {
+            outputByte++;
+            if(count8!=0)           //fill last unfilled bits with 0
+            {
+                for(int i=count8;i<8;i++)
+                {
+                    outBoolArray[i]=0;
+                }
+
+            }
+            uint8_t tempout=0;
+            int tempcount2=128;
+            for(int i=0;i<8;i++)
+            {
+                tempout+= outBoolArray[i]*tempcount2;
+                tempcount2/=2;
+            }
+            char buf[sizeof(uint8_t)];
+            memcpy (buf, &tempout, sizeof(tempout));
+            ofs2.write(buf, sizeof(uint8_t));
+            break;
+        }
+        outBoolArray[count8]=*it;
+        count8++;
+        if(count8>=8)
+        {
+            outputByte++;
+            //start output
+            uint8_t tempout=0;
+            int tempcount2=128;
+            for(int i=0;i<8;i++)
+            {
+                tempout+= outBoolArray[i]*tempcount2;
+                tempcount2/=2;
+            }
+            char buf[sizeof(uint8_t)];
+            memcpy (buf, &tempout, sizeof(tempout));
+            ofs2.write(buf, sizeof(uint8_t));
+            count8=0;
+            for(int i=0;i<8;i++) outBoolArray[i]=0;
+        }
+    }
+    cout<<"DPCMTree->afterEncode: "<<DPCMTree->afterEncode.size()<<" bits"<<endl;
+    ofs2.close();
+
 
 }
 
