@@ -76,6 +76,7 @@ public:
         list<unsigned char> ans;
         list<bool>::iterator curEncodeBit=encode.begin();
         chainNode* curPointing=root;
+        int decodeCount=0;
 
         while(curPointing!=0 && curEncodeBit!=encode.end())
         {
@@ -97,6 +98,8 @@ public:
                 allDecodes.push_back(tempUC);
                 EncodingOneSymbol(tempUC);
                 curPointing=root;
+                decodeCount++;
+                if(decodeCount>=512*512) break;
                 continue;
             }
             //Its a external node == Its a leaf node
@@ -107,6 +110,8 @@ public:
                 allDecodes.push_back(curPointing->symbol);
                 EncodingOneSymbol(curPointing->symbol);
                 curPointing=root;
+                decodeCount++;
+                if(decodeCount>=512*512) break;
                 continue;
             }
 
@@ -449,9 +454,16 @@ public:
                 ans.push_back(0);
                 allEncodes.push_back(0);
             }
+            else
+            {
+                cout<<"\nERROR\n";
+            }
         }
+
         }
         ifs.close();
+        cout<<"\nallEncodes.size(): "<<allEncodes.size()<<endl;
+
         return ans;
     }
 
@@ -598,8 +610,8 @@ int main()
     //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
     //cpp can't write single bit to file
     //, so bits need to be batched until it is a byte, then can output
-    ofstream ofs;
-    ofs.open("Result.raw", ofstream::out | ofstream::app);
+    ofstream ofs("Result.raw", ios::binary);
+    //ofs.open("Result.raw", ofstream::out);
     int compareToFixedLenCode=0;
     int TotalBit=0;
     tree encodeTree=tree();
@@ -647,14 +659,18 @@ int main()
                 }
 
             }
-            unsigned char tempout=0;
+            uint8_t tempout=0;
             int tempcount2=128;
             for(int i=0;i<8;i++)
             {
                 tempout+= outBoolArray[i]*tempcount2;
                 tempcount2/=2;
             }
-            ofs<<tempout;
+            //ofs<<tempout;
+            /**********start here*************/
+            char buf[sizeof(uint8_t)];
+            memcpy (buf, &tempout, sizeof(tempout));
+            ofs.write(buf, sizeof(uint8_t));
             break;
         }
         outBoolArray[count8]=*it;
@@ -663,14 +679,18 @@ int main()
         {
             outputByte++;
             //start output
-            unsigned char tempout=0;
+            uint8_t tempout=0;
             int tempcount2=128;
             for(int i=0;i<8;i++)
             {
                 tempout+= outBoolArray[i]*tempcount2;
                 tempcount2/=2;
             }
-            ofs<<tempout;
+            //ofs<<tempout;
+            char buf[sizeof(uint8_t)];
+            memcpy (buf, &tempout, sizeof(tempout));
+            ofs.write(buf, sizeof(uint8_t));
+
             count8=0;
             for(int i=0;i<8;i++) outBoolArray[i]=0;
         }
@@ -681,6 +701,7 @@ int main()
     cout<<"NYTcount: "<<NYTcount<<endl;
     cout<<"outputByte: "<<outputByte<<endl;
     cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
+    cout<<"encodeTree.afterEncode.size(): "<<encodeTree.afterEncode.size()<<endl;
     cout<<"TotalBit: "<<TotalBit<<endl; //if use 8bit fixed length to store
     cout<<"\n OriginalImageBits: "<<endl;
     for(int i=0;i<10;i++)
@@ -697,10 +718,21 @@ int main()
 
     //decode & output
     tree* decodeTree=new tree();
-    //decodeTree.readEncode();
-    decodeTree->Decoder(encodeTree.afterEncode);
+    decodeTree->readEncode();
+    decodeTree->Decoder(decodeTree->allEncodes);
     decodeTree->OutputToAfterDecode();
 
+    //compare totalout and allencodes
+    int compareIndex=0;
+    for(list<bool>::iterator it01=TotalOut.begin()
+        , it02=decodeTree->allEncodes.begin();it01!=TotalOut.end()
+        ;it01++, it02++)
+    {
+        if(*it01 != *it02)
+            break;
+        compareIndex++;
+    }
+    cout<<"compareIndex: "<<compareIndex<<endl;
 
 }
 
