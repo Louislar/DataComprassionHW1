@@ -13,6 +13,7 @@ Student ID: 104409017
 #include<algorithm>
 #include<bitset>
 #include<sstream>
+#include<math.h>
 
 using namespace std;
 
@@ -426,9 +427,10 @@ public:
 
     }// AddNYT() end
 
-    int readRAW()
+    int readRAW(string filename)
     {
-        ifstream ifs("Lena.raw", ios::binary);
+        // https://stackoverflow.com/questions/37781876/reading-raw-file-in-c
+        ifstream ifs(filename.c_str(), ios::binary);
         unsigned char value;
         char buf[sizeof(unsigned char)];    //unsigned char is 1 byte
 
@@ -533,42 +535,6 @@ public:
     }
 };
 
-int readRAW()
-{
-    // https://stackoverflow.com/questions/37781876/reading-raw-file-in-c
-    ifstream ifs("Lena.raw", ios::binary);
-    unsigned char value;
-    char buf[sizeof(unsigned char)];    //unsigned char is 1 byte
-
-    int img[500];
-    for(int i=0;i<256;i++) {img[i]=0;}
-
-    for(int i=0;i<512;i++){
-    for(int j=0;j<512;j++){
-    ifs.read(buf, sizeof(buf));
-    memcpy (&value, buf, sizeof(value));
-    //cout<<(int)value<<" ";
-    //change char to int
-    img[(int)value]=img[(int)value]+1;
-    }
-    }
-
-    //the number will between 0~255
-
-    /*for(int i=0;i<256;i++)
-    {
-        cout<<i<<" ";
-    }
-    cout<<endl;
-    int sum=0;
-    for(int i=0;i<256;i++)
-    {
-        //cout<<summarize[i]<<" ";
-        sum=sum+img[i];
-    }
-    cout<<512*512<<" "<<sum;*/
-}
-
 int main03()
 {
     tree decodeTree=tree();
@@ -600,7 +566,7 @@ int main03()
 
     decodeTree.OutputToAfterDecode();
     cout<<"decodeTree.root->weight: "<<decodeTree.root->weight<<endl;
-    decodeTree.readRAW();
+    decodeTree.readRAW("Lena.raw");
     //output original image pixel
     cout<<"Original pixel: \n";
     for(int i=0;i<50;i++)
@@ -640,8 +606,62 @@ int main03()
     }
 }
 
+float entropyCal(int symbols[], int alphabetSize=256)    //alphabet size is 256
+{                                //symbol set size is 512*512
+    float sum=0;
+    for(int i=0;i<alphabetSize;i++)
+    {
+        sum+=symbols[i];
+    }
+    if(sum!=512*512) cout<<"entropyCal() get a symbol set which size is not 512*512\n";
+
+    float symbolsProbability[alphabetSize];
+    for(int i=0;i<alphabetSize;i++)
+    {
+        symbolsProbability[i]=symbols[i]/sum;
+    }
+
+    float entropyH=0;
+    for(int i=0;i<alphabetSize;i++)
+    {
+        if(symbolsProbability[i]!=0)
+            entropyH+=symbolsProbability[i] * (log10(symbolsProbability[i])/log10(2));
+    }
+
+    return entropyH*(-1);
+}
+
+int main02()      //print out the entropy result
+{
+    tree encodeTree=tree();
+    encodeTree.readRAW("Baboon.raw");
+    int symbolCount[256]={0};
+    for(int i=0;i<512;i++)
+        for(int j=0;j<512;j++)
+            symbolCount[encodeTree.img[i][j]]++;
+    float ans=entropyCal(symbolCount);
+    cout<<"Original img entropy: "<<ans<<endl;
+    ans=0;
+    for(int i=0;i<512;i++)
+        for(int j=0;j<512;j++)
+            encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+
+    int compressedSymbolCount[2]={0};
+    for(list<bool>::iterator it=encodeTree.afterEncode.begin()
+        ;it!=encodeTree.afterEncode.end();it++)
+    {
+        if(*it==1)
+            compressedSymbolCount[1]++;
+        else
+            compressedSymbolCount[0]++;
+    }
+
+    ans=entropyCal(compressedSymbolCount, 2);
+    cout<<"After compress entropy: "<<ans<<endl;
+}
+
 //encoding needs 10s up
-int main()
+int main()        //This will do encode and decode and DPCM
 {
     //don't need to output by byte, it don't need to be a image!!
     //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
@@ -652,7 +672,7 @@ int main()
     int compareToFixedLenCode=0;
     int TotalBit=0;
     tree encodeTree=tree();
-    encodeTree.readRAW();
+    encodeTree.readRAW("Lena.raw");
     list<bool> TotalOut;    //all the bits will be output to Result.raw
     TotalOut.clear();
     for(int i=0;i<512;i++)
@@ -830,96 +850,4 @@ int main()
     cout<<"DPCMTree->afterEncode: "<<DPCMTree->afterEncode.size()<<" bits"<<endl;
     ofs2.close();
 
-
 }
-
-int decodemain(list<bool> boolList)
-{
-    tree* newTree= new tree();
-    newTree->Decoder(boolList);
-    cout<<"After decode: "<<endl;
-    list<unsigned char>::iterator tempListIt=newTree->allDecodes.begin();
-    for(;tempListIt!=newTree->allDecodes.end();tempListIt++)
-        cout<<(int)*tempListIt<<" ";
-    cout<<endl;
-}
-
-int main01()
-{
-    tree newTree=tree();
-    //readRAW();
-    newTree.readRAW();
-
-    int arrayTemp[50]={162, 162, 162, 161, 162, 156, 163, 160, 164, 160
-                      ,161, 159, 155, 162, 159, 154, 157, 156, 161, 161
-                      ,153, 156, 154, 157, 154, 157, 155, 152, 156, 154
-                      ,154, 156, 153, 157, 154, 159, 158, 166, 159, 166
-                      ,166, 165, 166, 171, 170, 175, 173, 170, 172, 172};
-
-    //newTree.EncodingOneSymbol(162);
-    for(int i=0;i<50;i++)
-        newTree.EncodingOneSymbol(arrayTemp[i]);
-    int count01=1;
-    for(list<bool>::iterator it=newTree.afterEncode.begin();it!=newTree.afterEncode.end();it++)
-    {
-        cout<<*it<<" ";
-        if(count01==20)
-        {
-            cout<<endl;
-            count01=0;
-        }
-        count01++;
-    }
-    cout<<endl;
-    decodemain(newTree.afterEncode);
-
-    cout<<"newTree.curNYT->Index: "<<newTree.curNYT->Index<<endl;
-    cout<<"newTree.curNYT->weight: "<<newTree.curNYT->weight<<endl;
-    cout<<"newTree.root->Index: "<<newTree.root->Index<<endl;
-    cout<<"newTree.root->weight: "<<newTree.root->weight<<endl;
-    cout<<"newTree.root->rightChild->Index: "<<newTree.root->rightChild->Index<<endl;
-    cout<<"newTree.root->rightChild->weight: "<<newTree.root->rightChild->weight<<endl;
-    cout<<"newTree.root->rightChild->symbol: "<<newTree.root->rightChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->Index: "<<newTree.root->leftChild->Index<<endl;
-    cout<<"newTree.root->leftChild->weight: "<<newTree.root->leftChild->weight<<endl;
-    cout<<"newTree.root->leftChild->symbol: "<<newTree.root->leftChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->Index<<endl;
-    cout<<"newTree.root->leftChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->weight<<endl;
-    cout<<"newTree.root->leftChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->Index<<endl;
-    cout<<"newTree.root->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->weight<<endl;
-    cout<<"newTree.root->leftChild->leftChild->symbol: "<<newTree.root->leftChild->leftChild->symbol<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->rightChild->Index: "<<newTree.root->leftChild->leftChild->rightChild->Index<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->rightChild->weight: "<<newTree.root->leftChild->leftChild->rightChild->weight<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->rightChild->symbol: "<<newTree.root->leftChild->leftChild->rightChild->symbol<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->leftChild->Index: "<<newTree.root->leftChild->leftChild->leftChild->Index<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->leftChild->weight: "<<newTree.root->leftChild->leftChild->leftChild->weight<<endl;
-    //cout<<"newTree.root->leftChild->leftChild->leftChild->symbol: "<<newTree.root->leftChild->leftChild->leftChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->rightChild->leftChild->Index: "<<newTree.root->leftChild->rightChild->leftChild->Index<<endl;
-    cout<<"newTree.root->leftChild->rightChild->leftChild->weight: "<<newTree.root->leftChild->rightChild->leftChild->weight<<endl;
-    cout<<"newTree.root->leftChild->rightChild->leftChild->symbol: "<<newTree.root->leftChild->rightChild->leftChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->Index<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->weight<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->symbol<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->Index<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->weight<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->leftChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->leftChild->symbol<<endl;\
-    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->Index: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->Index<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->weight: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->weight<<endl;
-    cout<<"newTree.root->leftChild->rightChild->rightChild->rightChild->symbol: "<<newTree.root->leftChild->rightChild->rightChild->rightChild->symbol<<endl;
-
-
-
-    //output Test
-    //output success
-    /*int findInt=tempOutput02.find(" ");
-    tempOutput02.erase(findInt, 1);
-    ofstream ofs;
-    ofs.open("Result.raw", ofstream::out);
-
-    bitset<10> abc(tempOutput02);
-    unsigned long longInt=abc.to_ulong();
-    unsigned char uc=longInt;
-    ofs<<uc;*/
-}
-
