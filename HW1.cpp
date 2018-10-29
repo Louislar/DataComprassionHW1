@@ -446,10 +446,10 @@ public:
         ifs.close();
     }
 
-    list<bool> readEncode()
+    list<bool> readEncode(string filename)
     {
         list<bool> ans; //Will be fed to Decoder()
-        ifstream ifs("Result.raw", ios::binary);
+        ifstream ifs(filename.c_str(), ios::binary);
         unsigned char value;
         char buf[sizeof(unsigned char)];    //unsigned char is 1 byte
 
@@ -538,7 +538,7 @@ public:
 int main03()
 {
     tree decodeTree=tree();
-    decodeTree.readEncode();
+    decodeTree.readEncode("Result.raw");
     //test readEncode()
     list<bool>::iterator encodeIt=decodeTree.allEncodes.begin();
     for(int i=0;i<80;i++)
@@ -661,8 +661,25 @@ int main02()      //print out the entropy result
 }
 
 //encoding needs 10s up
-int main()        //This will do encode and decode and DPCM
+int main()        //This will do encode, decode and DPCM
 {
+    //Input file name
+    string fileName;
+    int Userchoose1;
+    cout<<"Input file name: ";
+    cin>>fileName;
+    cout<<"[1] Encode+Decode+DPCM [2] Decode"<<endl;
+    cin>>Userchoose1;
+    if(Userchoose1==2)
+    {
+        tree* decodeTree=new tree();
+        decodeTree->readEncode(fileName);
+        decodeTree->Decoder(decodeTree->allEncodes);
+        decodeTree->OutputToAfterDecode();
+        return 0;
+    }
+
+
     //don't need to output by byte, it don't need to be a image!!
     //https://stackoverflow.com/questions/27589460/how-to-write-single-bits-to-a-file-in-c
     //cpp can't write single bit to file
@@ -672,7 +689,7 @@ int main()        //This will do encode and decode and DPCM
     int compareToFixedLenCode=0;
     int TotalBit=0;
     tree encodeTree=tree();
-    encodeTree.readRAW("Lena.raw");
+    encodeTree.readRAW(fileName);
     list<bool> TotalOut;    //all the bits will be output to Result.raw
     TotalOut.clear();
     for(int i=0;i<512;i++)
@@ -754,13 +771,13 @@ int main()        //This will do encode and decode and DPCM
     }
 
     ofs.close();
-    cout<<"compareToFixedLenCode: "<<compareToFixedLenCode<<endl;
+    /*cout<<"compareToFixedLenCode: "<<compareToFixedLenCode<<endl;
     cout<<"NYTcount: "<<NYTcount<<endl;
     cout<<"outputByte: "<<outputByte<<endl;
     cout<<"TotalOut.size(): "<<TotalOut.size()<<endl;
     cout<<"encodeTree.afterEncode.size(): "<<encodeTree.afterEncode.size()<<endl;
-    cout<<"TotalBit: "<<TotalBit<<endl; //if use 8bit fixed length to store
-    cout<<"\n OriginalImageBits: "<<endl;
+    cout<<"TotalBit: "<<TotalBit<<endl;*/ //if use 8bit fixed length to store
+    /*cout<<"\n OriginalImageBits: "<<endl;
     for(int i=0;i<10;i++)
     {
         cout<<encodeTree.img[0][i]<<" ";
@@ -771,11 +788,13 @@ int main()        //This will do encode and decode and DPCM
     {
         cout<<*tempIt<<" ";
         tempIt++;
-    }
+    }*/
+    cout<<"Result.raw size: "<<outputByte<<" Bytes."<<endl;
+
 
     //decode & output
     tree* decodeTree=new tree();
-    decodeTree->readEncode();
+    decodeTree->readEncode("Result.raw");
     decodeTree->Decoder(decodeTree->allEncodes);
     decodeTree->OutputToAfterDecode();
 
