@@ -487,10 +487,10 @@ public:
         return ans;
     }
 
-    int OutputToAfterDecode()
+    int OutputToAfterDecode(string filename)
     {
         ofstream ofs;
-        ofs.open("AfterDecode.raw", ofstream::out | ofstream::app);
+        ofs.open(filename.c_str(), ios::binary);
 
         for(list<unsigned char>::iterator it=allDecodes.begin();
             it!=allDecodes.end();it++)
@@ -517,19 +517,63 @@ public:
 
     int createDPCM()
     {
-        //first row is top minus down
-        for(int i=0;i<511;i++)
+        //first row is down minus top
+        for(int i=1;i<512;i++)
         {
-            DPCM->DPCMimg[i][0]=img[i][0]-img[i+1][0];
+            DPCM->DPCMimg[i][0]=abs(img[i+1][0]-img[i][0]);
         }
-        DPCM->DPCMimg[512][0]=img[512][0];
+        DPCM->DPCMimg[0][0]=img[0][0];
 
         //except first row, right row minus left row
         for(int i=0;i<512;i++)
         {
             for(int j=1;j<512;j++)
             {
-                DPCM->DPCMimg[i][j]=img[i][j]-img[i][j-1];
+                DPCM->DPCMimg[i][j]=abs(img[i][j]-img[i][j-1]);
+            }
+        }
+    }
+
+    int resumeDPCM()    //resume original image, from all decodes
+    {
+        list<unsigned char>::iterator allDecodesIter=allDecodes.begin();
+        for(int i=0;i<512;i++)
+        {
+            for(int j=0;j<512;j++)
+            {
+                DPCM->DPCMimg[i][j]=(int)*allDecodesIter;
+                allDecodesIter++;
+            }
+        }
+        cout<<"Before Resume: "<<endl;
+        for(int i=0;i<10;i++)
+        {
+            cout<<DPCM->DPCMimg[0][i]<<" ";
+        }
+
+        for(int i=1;i<512;i++)
+        {
+            DPCM->DPCMimg[i][0]=DPCM->DPCMimg[i-1][0]+DPCM->DPCMimg[i][0];
+        }
+        for(int i=0;i<512;i++)
+        {
+            for(int j=1;j<512;j++)
+            {
+                DPCM->DPCMimg[i][j]=DPCM->DPCMimg[i][j]+DPCM->DPCMimg[i][j-1];
+            }
+        }
+        allDecodes.clear();
+
+        cout<<"After Resume: "<<endl;
+        for(int i=0;i<10;i++)
+        {
+            cout<<DPCM->DPCMimg[0][i]<<" ";
+        }
+        for(int i=0;i<512;i++)
+        {
+            for(int j=0;j<512;j++)
+            {
+                allDecodes.push_back((unsigned char)DPCM->DPCMimg[i][j]);
             }
         }
     }
@@ -564,7 +608,7 @@ int main03()
     }
     cout<<endl;
 
-    decodeTree.OutputToAfterDecode();
+    decodeTree.OutputToAfterDecode("AfterDecode.raw");
     cout<<"decodeTree.root->weight: "<<decodeTree.root->weight<<endl;
     decodeTree.readRAW("Lena.raw");
     //output original image pixel
@@ -631,24 +675,24 @@ float entropyCal(int symbols[], int alphabetSize=256)    //alphabet size is 256
     return entropyH*(-1);
 }
 
-int main02()      //print out the entropy result
+int main02entropy(string filename)      //print out the entropy result
 {
-    tree encodeTree=tree();
-    encodeTree.readRAW("Baboon.raw");
+    tree* encodeTree= new tree();
+    encodeTree->readRAW(filename);
     int symbolCount[256]={0};
     for(int i=0;i<512;i++)
         for(int j=0;j<512;j++)
-            symbolCount[encodeTree.img[i][j]]++;
+            symbolCount[encodeTree->img[i][j]]++;
     float ans=entropyCal(symbolCount);
     cout<<"Original img entropy: "<<ans<<endl;
-    ans=0;
+    /*ans=0;
     for(int i=0;i<512;i++)
         for(int j=0;j<512;j++)
-            encodeTree.EncodingOneSymbol(encodeTree.img[i][j]);
+            encodeTree->EncodingOneSymbol(encodeTree->img[i][j]);
 
     int compressedSymbolCount[2]={0};
-    for(list<bool>::iterator it=encodeTree.afterEncode.begin()
-        ;it!=encodeTree.afterEncode.end();it++)
+    for(list<bool>::iterator it=encodeTree->afterEncode.begin()
+        ;it!=encodeTree->afterEncode.end();it++)
     {
         if(*it==1)
             compressedSymbolCount[1]++;
@@ -657,7 +701,7 @@ int main02()      //print out the entropy result
     }
 
     ans=entropyCal(compressedSymbolCount, 2);
-    cout<<"After compress entropy: "<<ans<<endl;
+    cout<<"After compress entropy: "<<ans<<endl;*/
 }
 
 //encoding needs 10s up
@@ -675,7 +719,7 @@ int main()        //This will do encode, decode and DPCM
         tree* decodeTree=new tree();
         decodeTree->readEncode(fileName);
         decodeTree->Decoder(decodeTree->allEncodes);
-        decodeTree->OutputToAfterDecode();
+        decodeTree->OutputToAfterDecode("AfterDecode.raw");
         return 0;
     }
 
@@ -790,13 +834,14 @@ int main()        //This will do encode, decode and DPCM
         tempIt++;
     }*/
     cout<<"Result.raw size: "<<outputByte<<" Bytes."<<endl;
+    main02entropy(fileName);
 
 
     //decode & output
     tree* decodeTree=new tree();
     decodeTree->readEncode("Result.raw");
     decodeTree->Decoder(decodeTree->allEncodes);
-    decodeTree->OutputToAfterDecode();
+    decodeTree->OutputToAfterDecode("AfterDecode.raw");
 
     //compare totalout and allencodes
     /*int compareIndex=0;
@@ -811,6 +856,7 @@ int main()        //This will do encode, decode and DPCM
     cout<<"compareIndex: "<<compareIndex<<endl;*/
 
     //start doing DPCM stuff...
+    cout<<"\n\nDPCM: "<<endl;
     tree* DPCMTree=new tree();
     encodeTree.createDPCM();
     for(int i=0;i<512;i++)
@@ -866,7 +912,26 @@ int main()        //This will do encode, decode and DPCM
             for(int i=0;i<8;i++) outBoolArray[i]=0;
         }
     }
-    cout<<"DPCMTree->afterEncode: "<<DPCMTree->afterEncode.size()<<" bits"<<endl;
+    cout<<"DPCM afterEncode size: "<<DPCMTree->afterEncode.size()<<" bits"<<endl;
+    //calculate DPCM entropy
+    int symbolCount[256]={0};
+    for(int i=0;i<512;i++)
+        for(int j=0;j<512;j++)
+            symbolCount[DPCMTree->img[i][j]]++;
+    float ans=entropyCal(symbolCount);
+    cout<<"DPCM img entropy: "<<ans<<endl;
+
+
+    /*cout<<"Origin DPCM Without encode"<<endl;
+    for(int i=0;i<10;i++)
+        cout<<DPCMTree->img[0][i]<<" ";
+    tree* REDPCMTree=new tree(); //tree for DPCM resume
+    REDPCMTree->readEncode("ResultDPCM.raw");
+    REDPCMTree->Decoder(REDPCMTree->allEncodes);
+    REDPCMTree->resumeDPCM();
+    REDPCMTree->OutputToAfterDecode("AfterDecodeDPCM.raw");*/
+
+
     ofs2.close();
 
 }
